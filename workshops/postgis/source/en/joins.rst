@@ -11,18 +11,18 @@ Using a spatial join, we can answer the question in one step, retrieving informa
 
 .. code-block:: sql
 
-  SELECT 
-    subways.name AS subway_name, 
-    neighborhoods.name AS neighborhood_name, 
+  SELECT
+    subways.name AS subway_name,
+    neighborhoods.name AS neighborhood_name,
     neighborhoods.boroname AS borough
   FROM nyc_neighborhoods AS neighborhoods
   JOIN nyc_subway_stations AS subways
   ON ST_Contains(neighborhoods.geom, subways.geom)
   WHERE subways.name = 'Broad St';
 
-:: 
+::
 
-   subway_name | neighborhood_name  |  borough  
+   subway_name | neighborhood_name  |  borough
   -------------+--------------------+-----------
    Broad St    | Financial District | Manhattan
 
@@ -37,8 +37,8 @@ For example: **"What is the population and racial make-up of the neighborhoods o
 
 .. code-block:: sql
 
-  SELECT 
-    neighborhoods.name AS neighborhood_name, 
+  SELECT
+    neighborhoods.name AS neighborhood_name,
     Sum(census.popn_total) AS population,
     100.0 * Sum(census.popn_white) / Sum(census.popn_total) AS white_pct,
     100.0 * Sum(census.popn_black) / Sum(census.popn_total) AS black_pct
@@ -51,7 +51,7 @@ For example: **"What is the population and racial make-up of the neighborhoods o
 
 ::
 
-    neighborhood_name  | population | white_pct | black_pct 
+    neighborhood_name  | population | white_pct | black_pct
   ---------------------+------------+-----------+-----------
    Carnegie Hill       |      18763 |      90.1 |       1.4
    North Sutton Area   |      22460 |      87.6 |       1.6
@@ -87,12 +87,12 @@ For example: **"What is the population and racial make-up of the neighborhoods o
 
 What's going on here? Notionally (the actual evaluation order is optimized under the covers by the database) this is what happens:
 
-#. The ``JOIN`` clause creates a virtual table that includes columns from both the neighborhoods and census tables. 
-#. The ``WHERE`` clause filters our virtual table to just rows in Manhattan. 
+#. The ``JOIN`` clause creates a virtual table that includes columns from both the neighborhoods and census tables.
+#. The ``WHERE`` clause filters our virtual table to just rows in Manhattan.
 #. The remaining rows are grouped by the neighborhood name and fed through the aggregation function to :command:`Sum()` the population values.
 #. After a little arithmetic and formatting (e.g., ``GROUP BY``, ``ORDER BY``) on the final numbers, our query spits out the percentages.
 
-.. note:: 
+.. note::
 
    The ``JOIN`` clause combines two ``FROM`` items.  By default, we are using an ``INNER JOIN``, but there are four other types of joins. For further information see the `join_type <http://www.postgresql.org/docs/9.1/interactive/sql-select.html#SQL-FROM>`_ definition in the PostgreSQL documentation.
 
@@ -102,20 +102,20 @@ First, let's get the baseline racial make-up of the city.
 
 .. code-block:: sql
 
-  SELECT 
-    100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct, 
-    100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct, 
+  SELECT
+    100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct,
+    100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct,
     Sum(popn_total) AS popn_total
   FROM nyc_census_blocks;
 
-:: 
+::
 
-      white_pct     |    black_pct     | popn_total 
+      white_pct     |    black_pct     | popn_total
   ------------------+------------------+------------
    44.0039500762811 | 25.5465789002416 |    8175032
 
 
-So, of the 8M people in New York, about 44% are "white" and 26% are "black". 
+So, of the 8M people in New York, about 44% are "white" and 26% are "black".
 
 Duke Ellington once sang that "You / must take the A-train / To / go to Sugar Hill way up in Harlem." As we saw earlier, Harlem has far and away the highest African-American population in Manhattan (80.5%). Is the same true of Duke's A-train?
 
@@ -124,8 +124,8 @@ First, note that the contents of the ``nyc_subway_stations`` table ``routes`` fi
 .. code-block:: sql
 
   SELECT DISTINCT routes FROM nyc_subway_stations;
-  
-:: 
+
+::
 
  A,C,G
  4,5
@@ -138,15 +138,15 @@ First, note that the contents of the ``nyc_subway_stations`` table ``routes`` fi
 .. note::
 
    The ``DISTINCT`` keyword eliminates duplicate rows from the result.  Without the ``DISTINCT`` keyword, the query above identifies 491 results instead of 73.
-   
+
 So to find the A-train, we will want any row in ``routes`` that has an 'A' in it. We can do this a number of ways, but today we will use the fact that :command:`strpos(routes,'A')` will return a non-zero number if 'A' is in the routes field.
 
 .. code-block:: sql
 
-   SELECT DISTINCT routes 
-   FROM nyc_subway_stations AS subways 
+   SELECT DISTINCT routes
+   FROM nyc_subway_stations AS subways
    WHERE strpos(subways.routes,'A') > 0;
-   
+
 ::
 
   A,B,C
@@ -158,14 +158,14 @@ So to find the A-train, we will want any row in ``routes`` that has an 'A' in it
   A,C,F
   A,B,C,D
   A,C,E
-  
+
 Let's summarize the racial make-up of within 200 meters of the A-train line.
 
 .. code-block:: sql
 
-  SELECT 
-    100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct, 
-    100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct, 
+  SELECT
+    100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct,
+    100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct,
     Sum(popn_total) AS popn_total
   FROM nyc_census_blocks AS census
   JOIN nyc_subway_stations AS subways
@@ -174,11 +174,11 @@ Let's summarize the racial make-up of within 200 meters of the A-train line.
 
 ::
 
-      white_pct     |    black_pct     | popn_total 
+      white_pct     |    black_pct     | popn_total
   ------------------+------------------+------------
    45.5901255900202 | 22.0936235670937 |     189824
 
-So the racial make-up along the A-train isn't radically different from the make-up of New York City as a whole. 
+So the racial make-up along the A-train isn't radically different from the make-up of New York City as a whole.
 
 Advanced Join
 -------------
@@ -190,7 +190,7 @@ To answer that question, we'll add another join to our query, so that we can sim
 .. code-block:: sql
 
     CREATE TABLE subway_lines ( route char(1) );
-    INSERT INTO subway_lines (route) VALUES 
+    INSERT INTO subway_lines (route) VALUES
       ('A'),('B'),('C'),('D'),('E'),('F'),('G'),
       ('J'),('L'),('M'),('N'),('Q'),('R'),('S'),
       ('Z'),('1'),('2'),('3'),('4'),('5'),('6'),
@@ -200,10 +200,10 @@ Now we can join the table of subway lines onto our original query.
 
 .. code-block:: sql
 
-    SELECT 
+    SELECT
       lines.route,
-      100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct, 
-      100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct, 
+      100.0 * Sum(popn_white) / Sum(popn_total) AS white_pct,
+      100.0 * Sum(popn_black) / Sum(popn_total) AS black_pct,
       Sum(popn_total) AS popn_total
     FROM nyc_census_blocks AS census
     JOIN nyc_subway_stations AS subways
@@ -215,7 +215,7 @@ Now we can join the table of subway lines onto our original query.
 
 ::
 
-     route | white_pct | black_pct | popn_total 
+     route | white_pct | black_pct | popn_total
     -------+-----------+-----------+------------
      S     |      39.8 |      46.5 |      33301
      3     |      42.7 |      42.1 |     223047
@@ -248,9 +248,9 @@ Function List
 
 `ST_Contains(geometry A, geometry B) <http://postgis.net/docs/manual-2.1/ST_Contains.html>`_: Returns true if and only if no points of B lie in the exterior of A, and at least one point of the interior of B lies in the interior of A.
 
-`ST_DWithin(geometry A, geometry B, radius) <http://postgis.net/docs/manual-2.1/ST_DWithin.html>`_: Returns true if the geometries are within the specified distance of one another. 
+`ST_DWithin(geometry A, geometry B, radius) <http://postgis.net/docs/manual-2.1/ST_DWithin.html>`_: Returns true if the geometries are within the specified distance of one another.
 
-`ST_Intersects(geometry A, geometry B) <http://postgis.net/docs/manual-2.1/ST_Intersects.html>`_: Returns TRUE if the Geometries/Geography "spatially intersect" - (share any portion of space) and FALSE if they don't (they are Disjoint). 
+`ST_Intersects(geometry A, geometry B) <http://postgis.net/docs/manual-2.1/ST_Intersects.html>`_: Returns TRUE if the Geometries/Geography "spatially intersect" - (share any portion of space) and FALSE if they don't (they are Disjoint).
 
 `round(v numeric, s integer) <http://www.postgresql.org/docs/current/interactive/functions-math.html>`_: PostgreSQL math function that rounds to s decimal places
 
